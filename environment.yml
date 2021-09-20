@@ -9,7 +9,7 @@ dependencies:
   - altair=4.1.0
   - numpy=1.18.1
   - pandas=1.2.4
-  - pip=20.0.2  
+  - pip  
   - pip:
     - streamlit==0.88.0
     - protobuf==3.17.3
