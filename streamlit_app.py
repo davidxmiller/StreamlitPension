@@ -13,27 +13,25 @@ def calc_national_insurance(salary):
     elif salary > pt:
         contribution = (salary - pt) * 0.12
     return contribution
-    
-def income_tax_bands_including_personalallowance(income):
-    pa = 12.570
-    basic_rate_end, higher_rate_end = 50.271, 150.000
-    tax_free = pa if income > pa else income
-    basic_rate, higher_rate, additional_rate = 0, 0, 0
-    if income > pa:
-        basic_rate = basic_rate_end - pa
-        if income > higher_rate_end:
-            higher_rate = higher_rate_end - basic_rate_end
-            additional_rate = income - higher_rate_end
-        elif income > basic_rate_end:
-            higher_rate = income - basic_rate_end
-    return tax_free, basic_rate, higher_rate, additional_rate
 
-def calc_income_tax_considering_personalallowance(income):    
-    tax_free, basic_rate, higher_rate, additional_rate = income_tax_bands_including_personalallowance(income)
-    tax = (basic_rate * 0.2) + (higher_rate * 0.4) + (additional_rate * 0.45)
+def calc_income_tax_considering_personalallowance(income):
+    bands_and_tax_rates = [\
+    ( 0     ,  12.570, 0.0 ),\
+    ( 12.570,  50.270, 0.2 ),\
+    ( 50.270, 150.000, 0.4 ),\
+    (150.000, 999.000, 0.45)]
+    
+    tax = 0;
+    income_still_to_be_taxed = income
+    for band_and_tax_rate in bands_and_tax_rates:
+        income_in_bracket = min(income_still_to_be_taxed, band_and_tax_rate[1] - band_and_tax_rate[0])
+        tax = tax + (income_in_bracket * band_and_tax_rate[2])
+        income_still_to_be_taxed = income_still_to_be_taxed - income_in_bracket
+        if income_still_to_be_taxed <= 0:
+            break
     return tax
 
-def calc_income_after_tax(working, income):
+def calc_income_after_tax_and_NI(working, income):
     income_tax = calc_income_tax_considering_personalallowance(income)
     national_insurance = 0;
     if (working): 
@@ -94,8 +92,8 @@ for age in range(current_age, retire_age):
     pension_contubtion = (day_adjusted_salary1_K * pen_contrib_tot_perc_in_correct_scale)
     assets_end_of_last_year = assets_end_of_last_year + pension_contubtion
     assets_end_of_each_year.append((age, assets_end_of_last_year))
-    salary1_after_tax = calc_income_after_tax(True, day_adjusted_salary1_K - pension_contubtion)
-    salary2_after_tax = calc_income_after_tax(True, day_adjusted_salary2_K)
+    salary1_after_tax = calc_income_after_tax_and_NI(True, day_adjusted_salary1_K - pension_contubtion)
+    salary2_after_tax = calc_income_after_tax_and_NI(True, day_adjusted_salary2_K)
     gross_income_each_year.append((age, day_adjusted_salary1_K + day_adjusted_salary2_K))
     income_each_year.append((age, salary1_after_tax + salary2_after_tax))
 
@@ -159,8 +157,8 @@ retirement_income_pa_K = \
 for age in range(retire_age, current_age):
     gross_retirement_income_1 = state_pen_pa_K_1 + starting_drawdown_pa_K
     gross_retirement_income_2 = state_pen_pa_K_2 + claire_cec_pa_K + clare_rbs_pa_K
-    retirement_income_1 = calc_income_after_tax(False, gross_retirement_income_1);
-    retirement_income_2 = calc_income_after_tax(False, gross_retirement_income_2);
+    retirement_income_1 = calc_income_after_tax_and_NI(False, gross_retirement_income_1);
+    retirement_income_2 = calc_income_after_tax_and_NI(False, gross_retirement_income_2);
     gross_income_each_year.append((age, gross_retirement_income_1 + gross_retirement_income_2))
     income_each_year.append((age, retirement_income_1 + retirement_income_2))
 
