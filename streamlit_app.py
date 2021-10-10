@@ -41,146 +41,150 @@ def calc_income_after_tax_and_NI(working, income):
 
 st.set_page_config(page_title = 'Pension Calculator', layout='wide', initial_sidebar_state='collapsed')
 
-col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 3, 3])
+col1, col2, col3  = st.columns([1, 1, 2])
 
-age = int(col1.text_input("Age (Y):", 44))
-salary1_K = int(col1.text_input("Salary1 (K):", 73))
-salary2_K = int(col1.text_input("Salary2 (K):", 15))
-pen_contrib_base = float(col1.text_input("Employer Pension Contribution (%): ", 7.0))
-d_pension_assets_K = int(col1.text_input("Pension1 Assets (K): ", "313"))
-c_pension_assets_K= int(col1.text_input("Pension2 Assets (K): ", "46"))
-pension_age = int(col1.text_input("State Pension Age (Y)", "67"))
-state_pen_pa_K_1 = float(col1.text_input("State Pension1 Amount (K)", "9.3"))
-state_pen_pa_K_2 = float(col1.text_input("State Pension2 Amount (K)", "9.3"))
-claire_cec_pa_K = float(col1.text_input("CEC Pension Amount (K)", "8.4"))
-clare_rbs_pa_K = float(col1.text_input("RBS Pension Amount (K)", "1.8"))
+ages = [None] * 2 
+salary_K = [None] * 2
+employee_pension_contribution_perc = [None] * 2
+starting_pension_assets_K = [None] * 2
+expected_state_pension_K = [None] * 2
+final_salary_pension_K = [None] * 2
+person_pension_contribution_perc = [None] * 2
+retirement_age = [None] * 2
+four_day_week_age = [None] * 2
 
-pen_contrib_pers= col2.slider("Employee Pension Contribution (%): ", 7, 25, 13)
-inflation = col2.slider("Inflation (%): ", 2.0, 3.5, 2.5, 0.1)
-fees = col2.slider("Fees (%): ", 0.4, 1.0, 0.5, 0.1)
-real_return_work_pa = col2.slider("Real Return, before retirement (%): ", 0.0, 5.5, 2.5, 0.1)
-real_return_retire_pa = col2.slider("Real Return, after retirement (%): ", 0.0, 5.5, 1.5, 0.1)
+with col1.expander("Person 0 details", expanded=True):
+    ages[0] = int(st.text_input("Age0 (Y):", 44))
+    salary_K[0] = float(st.text_input("Annual Salary0 (K):", 73))
+    employee_pension_contribution_perc[0] = float(st.text_input("Employer Pension Contribution0 (%): ", 7.0))
+    pension_age = int(st.text_input("State Pension Age0 (Y)", "67"))
+    expected_state_pension_K[0] = float(st.text_input("State Pension0 p.a (K)", "9.3"))
+    final_salary_pension_K[0] = float(st.text_input("Other Pension0 p.a (K): ", "0"))
+    starting_pension_assets_K[0] = float(st.text_input("Current Pension Assets0 (K): ", "313"))
 
-retire_age = col3.slider("Retirement Age (Y):", 45, 67, 67)
-four_day_week_age = col3.slider("Four Day Week Age (Y):", 45, 67, 67)
-drawdown_pa_K = col3.slider("DrawDown Amount (K): ", 15, 40, 28)
+with col1.expander("Person 1 details", expanded=False):
+    ages[1] = int(st.text_input("Age1 (Y):", 44))
+    salary_K[1] = float(st.text_input("Annual Salary1 (K):", 15))
+    employee_pension_contribution_perc[1] = float(st.text_input("Employer Pension Contribution1 (%): ", 0.0))
+    pension_age = int(st.text_input("State Pension Age1 (Y)", "67"))
+    expected_state_pension_K[1] = float(st.text_input("State Pension1 p.a (K)", "9.3"))
+    final_salary_pension_K[1] = float(st.text_input("Other Pension1 p.a (K): ", "10.2")) # 8.4 + 1.8 (Council + RBS
+    starting_pension_assets_K[1] = float(st.text_input("Current Pension Assets1 (K): ", "46"))
+
+with col2.expander("Investment assumptions"):
+    inflation = st.slider("Inflation (%): ", 2.0, 3.5, 2.5, 0.1)
+    fees = st.slider("Fees (%): ", 0.4, 1.0, 0.5, 0.1)
+    rate_of_return_pa_perc = st.slider("Real Return, before retirement (%): ", 0.0, 5.5, 2.5, 0.1)
+    rate_of_return_after_retirement_pa_perc = st.slider("Real Return, after retirement (%): ", 0.0, 5.5, 1.5, 0.1)
+
+for i in range(0, 2):
+    with col2.expander("Person " + str(i) + " Pension Choices"):
+        person_pension_contribution_perc[i] = st.slider("Employee " + str(i) + " Pension Contribution (%): " , 0, 25, 13)
+        retirement_age[i] = st.slider("Retirement Age "  + str(i) + " (Y):" , 45, 67, 67)
+        four_day_week_age[i] = st.slider("Four Day Week Age "  + str(i) + " (Y):", 45, 67, 67)
+
+drawdown_pa_K = col2.slider("DrawDown Amount (K): ", 15, 50, 29)
     
 inflation_adjustment = inflation / 100
-assets_K = d_pension_assets_K + c_pension_assets_K
 
-# Calculate the assets at end of each year over [retire_in] years
-assets_end_of_each_year = []
-gross_income_each_year = []
-income_each_year = []
-assets_end_of_last_year = assets_K
-pa_real_adjustment_work_in_correct_scale = 1 + (real_return_work_pa / 100)
-pa_real_adjustment_retire_in_correct_scale = 1 + (real_return_retire_pa / 100) 
+lowestStartingAge = min(ages[0], ages[1])
+highestRetirementAge = max(retirement_age[0], retirement_age[1])
 
-current_age = age
+age_and_assets_at_end_of_each_year_K = []
+age_and_gross_income_each_year_K = []
+age_and_net_income_each_year_K = []
 
-#
-# Note: Until we reach retirement ignore inflation, returns are after inflation and assume salary increases with inflation    
-#
-
-pen_contrib_tot_perc_in_correct_scale = (pen_contrib_base + pen_contrib_pers) / 100
-
-# Assume pension contributions only arrrive at end of the year (conservative)
-for age in range(current_age, retire_age):
-    assets_end_of_last_year = assets_end_of_last_year * pa_real_adjustment_work_in_correct_scale # Do before salary saving
-    day_adjusted_salary1_K = (salary1_K * 0.8) if (age >= four_day_week_age) else salary1_K
-    day_adjusted_salary2_K = (salary2_K * 0.8) if (age >= four_day_week_age) else salary2_K
-    pension_contubtion = (day_adjusted_salary1_K * pen_contrib_tot_perc_in_correct_scale)
-    assets_end_of_last_year = assets_end_of_last_year + pension_contubtion
-    assets_end_of_each_year.append((age, assets_end_of_last_year))
-    salary1_after_tax = calc_income_after_tax_and_NI(True, day_adjusted_salary1_K - pension_contubtion)
-    salary2_after_tax = calc_income_after_tax_and_NI(True, day_adjusted_salary2_K)
-    gross_income_each_year.append((age, day_adjusted_salary1_K + day_adjusted_salary2_K))
-    income_each_year.append((age, salary1_after_tax + salary2_after_tax))
-
-current_age = retire_age
-
-# Store assets at point of retirement
-final_assets_at_retirement = assets_end_of_last_year
+current_assets_K = starting_pension_assets_K[0] + starting_pension_assets_K[1];
+end_of_year_total_assets_K = current_assets_K;
 
 #
-# Note: Once we reach retirement assume state pension automatically increases with inflation, and that returns are after
-# inflation, but assume that the amount required in draw down increased with inflation 
+# For each year until both people are retired calculate:-
+#  - net income
+#  - gross income
+#  - pensions assets
 #
+for current_age in range(lowestStartingAge, highestRetirementAge): # For each year where someone is still working
+    # Apply returns from investment before adding pension contributions
+    current_assets_K = current_assets_K * (1.0 + (rate_of_return_pa_perc / 100 ))
 
-# For a couple add both state pensions together
-state_pen_pa_K_total = state_pen_pa_K_1 + state_pen_pa_K_2        
+    yearly_gross_income_K = 0
+    yearly_net_income_K = 0
+    for i in range(0, 2): # For each Person 
+        if (current_age < retirement_age[i]): # If still working (not still retired)
+            yearly_gross_income_K += salary_K[i]
+
+            day_adjusted_salary_K = (salary_K[i] * 0.8) if (current_age >= four_day_week_age[i]) else salary_K[i]                        
+
+            pension_contribution_K = (day_adjusted_salary_K * (person_pension_contribution_perc[i] / 100))
+            current_assets_K += pension_contribution_K
+
+            net_salary_K = calc_income_after_tax_and_NI(True, day_adjusted_salary_K - pension_contribution_K)             
+            yearly_net_income_K += net_salary_K
+
+    age_and_assets_at_end_of_each_year_K.append((current_age, current_assets_K))
+    age_and_gross_income_each_year_K.append((current_age, yearly_gross_income_K))
+    age_and_net_income_each_year_K.append((current_age, yearly_net_income_K))
+
+final_assets_at_retirement_K = age_and_assets_at_end_of_each_year_K[-1][1] # Final array entry, second tuple value (assets)
+
+#
+# For each year after both people are retired start drawdown and calculate:-
+#  - net income
+#  - gross income
+#  - pensions assets
+#
+# Note: I'm just ignoring inflation. This is so the reported values are in today's money.
+# I'd have assumed that the state pension increases with inflation, that required drawdown increases with inflation, and that then returns would include inflation (rather than exclude).
+# I tested including inflation and the difference is small enough that it gave the same 'run out of money' year, so I've just left it out.
+# 
+state_pen_pa_K_total = expected_state_pension_K[0] + expected_state_pension_K[1]
 
 # How many years of retirement are there with no state pension?
-years_without_state_pension = pension_age - retire_age
-    
-# Calculate draw down, assume withdraw income at start of year and get stock returns at end of year (conservative)
-starting_drawdown_pa_K = drawdown_pa_K
+years_without_state_pension = pension_age - highestRetirementAge
+
+current_age = highestRetirementAge
+current_assets_K = final_assets_at_retirement_K
+
+yearly_gross_retirement_income_K = drawdown_pa_K + state_pen_pa_K_total
+
+# Pay Tax, but not NI as we're retired. Do in two steps as each person has a tax allowance
+yearly_net_retirement_income_K = \
+    calc_income_after_tax_and_NI(False, (drawdown_pa_K / 2) + expected_state_pension_K[0]) + \
+    calc_income_after_tax_and_NI(False, (drawdown_pa_K / 2) + expected_state_pension_K[1])    
+
 while True:
-    # Take cash out
-    drawdown_this_year_K = drawdown_pa_K if (current_age < pension_age) else drawdown_pa_K - state_pen_pa_K_total        
-    assets = assets_end_of_last_year - drawdown_this_year_K                
-    if (assets < 0 or current_age == 111):
+
+    # Sell assets from the pension pot to live on
+    current_assets_K = current_assets_K - drawdown_pa_K
+
+    # Keep lookping until we run out of money or hit 111
+    if (current_assets_K < 0 or current_age == 111):
         break
-        
+
+    # If we've not hit state retirement age then sell additional assets to make up the shortfall so that before/after state pension age have same income    
+    if (current_age < pension_age):
+        current_assets_K = current_assets_K - state_pen_pa_K_total
+
     # Pay fees
-    assets = assets * (1 - (fees / 100));
+    current_assets_K = current_assets_K * (1 - (fees / 100));
+
+    # Calculate investment return on remaining assets.    
+    current_assets_K = current_assets_K * (1.0 + ((rate_of_return_after_retirement_pa_perc) / 100 ))
         
-    # Calculate return on remaining assets 
-    assets = assets * pa_real_adjustment_retire_in_correct_scale
-            
-    # Increase drawdown amount required due to inflation
-    drawdown_pa_K = drawdown_pa_K * (1 + inflation_adjustment)
-    
-    assets_end_of_each_year.append((current_age, assets))  
-    assets_end_of_last_year = assets
+    age_and_assets_at_end_of_each_year_K.append((current_age, current_assets_K))
+    age_and_gross_income_each_year_K.append((current_age, yearly_gross_retirement_income_K))
+    age_and_net_income_each_year_K.append((current_age, yearly_net_retirement_income_K))
+
     current_age = current_age + 1
-            
-# TODO:
-# - Can i make a better layout? https://stackoverflow.com/questions/52980565/arranging-widgets-in-ipywidgets-interactive 
-
-# TODO:
-# - allow option to taper off working week before retirement (which can also be used to simulate lower salary)
-# - maybe allow two tapers
-# - remember to calculate tax
-    
-# TODO: Consider if/how to factor in tax 
-# - our couple averagte tax rate may be lower as our income will be more balanced between us (I won't be in upper tax bracket)
-# - 25% of pension withdrawls can be taken tax free (doesn't need to be single giant sum, one example providor allows 4 per year, but if was SIPP..)        
-
-retirement_income_pa_K = \
-    state_pen_pa_K_1 + \
-    state_pen_pa_K_2 + \
-    claire_cec_pa_K + \
-    clare_rbs_pa_K +\
-    starting_drawdown_pa_K;
-
-for age in range(retire_age, current_age):
-    gross_retirement_income_1 = state_pen_pa_K_1 + starting_drawdown_pa_K
-    gross_retirement_income_2 = state_pen_pa_K_2 + claire_cec_pa_K + clare_rbs_pa_K
-    retirement_income_1 = calc_income_after_tax_and_NI(False, gross_retirement_income_1);
-    retirement_income_2 = calc_income_after_tax_and_NI(False, gross_retirement_income_2);
-    gross_income_each_year.append((age, gross_retirement_income_1 + gross_retirement_income_2))
-    income_each_year.append((age, retirement_income_1 + retirement_income_2))
-
-col3.text("Assets at retire (K): " + str(int(final_assets_at_retirement)))
-col3.text("Run out of money (Y): " + str(income_each_year[-1][0]))
-col3.text("Retirement Income (K): " + str(int(income_each_year[-1][1])))
-col3.text("Recommended Income (K): 47.5")
-
-gross_income_as_perc_starting = []
-starting_gross = salary1_K + salary2_K
-for age, income in income_each_year:
-    gross_income_as_perc_starting.append((age, income / starting_gross))
-
 
 import altair as  alt
-df = pd.DataFrame(income_each_year, columns=['Age', 'Income'])
+df = pd.DataFrame(age_and_net_income_each_year_K, columns=['Age', 'Income'])
 chart_net = alt.Chart(df).mark_line().encode(
     alt.X('Age:Q', scale=alt.Scale(zero=False)),
     alt.Y('Income:Q', scale=alt.Scale(zero=False))
 ).properties(title="Gross & Net Income (K) vs Age")
 
-df = pd.DataFrame(gross_income_each_year, columns=['Age', 'Income'])
+df = pd.DataFrame(age_and_gross_income_each_year_K, columns=['Age', 'Income'])
 chart_gross = alt.Chart(df).mark_line().encode(
     alt.X('Age:Q', scale=alt.Scale(zero=False)),
     alt.Y('Income:Q', scale=alt.Scale(zero=False))
@@ -188,19 +192,19 @@ chart_gross = alt.Chart(df).mark_line().encode(
 
 # Must be better way to add two series to single chart...
 chart = alt.layer(chart_net, chart_gross)
-col4.altair_chart(chart, use_container_width=True)
+col3.altair_chart(chart, use_container_width=True)
 
-df = pd.DataFrame(gross_income_as_perc_starting, columns=['Age', 'Income'])
-chart = alt.Chart(df).mark_line().encode(
-    alt.X('Age:Q', scale=alt.Scale(zero=False)),
-    alt.Y('Income:Q', scale=alt.Scale(zero=False))
-).properties(title="Gross Income as % of Starting vs Age")
-col4.altair_chart(chart, use_container_width=True)
 
-df = pd.DataFrame(assets_end_of_each_year, columns=['Age', 'Assets'])
+df = pd.DataFrame(age_and_assets_at_end_of_each_year_K, columns=['Age', 'Assets'])
 chart = alt.Chart(df).mark_line().encode(
   x='Age',
   y='Assets'
 ).properties(title="Pension Assets (K) vs Age")
 
-col5.altair_chart(chart, use_container_width=True)
+col3.altair_chart(chart, use_container_width=True)
+
+col3.text("Assets at retire (K): " + str(int(final_assets_at_retirement_K)))
+col3.text("Run out of money (Y): " + str(age_and_gross_income_each_year_K[-1][0]))
+col3.text("Recommended Income Gross (K): 47.5")
+col3.text("Retirement Income Gross (K): " + str(yearly_gross_retirement_income_K))
+col3.text("Retirement Income Net (K): " + str(yearly_net_retirement_income_K))
