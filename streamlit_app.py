@@ -46,17 +46,17 @@ col1, col2, col3  = st.columns([1, 1, 2])
 ages = [None] * 2 
 salary_K = [None] * 2
 employee_pension_contribution_perc = [None] * 2
+employer_pension_contribution_perc = [None] * 2
 starting_pension_assets_K = [None] * 2
 expected_state_pension_K = [None] * 2
 final_salary_pension_K = [None] * 2
-person_pension_contribution_perc = [None] * 2
 retirement_age = [None] * 2
 four_day_week_age = [None] * 2
 
 with col1.expander("Person 0 details", expanded=True):
     ages[0] = int(st.text_input("Age0 (Y):", 44))
     salary_K[0] = float(st.text_input("Annual Salary0 (K):", 73))
-    employee_pension_contribution_perc[0] = float(st.text_input("Employer Pension Contribution0 (%): ", 7.0))
+    employer_pension_contribution_perc[0] = float(st.text_input("Employer Pension Contribution0 (%): ", 7.0))
     pension_age = int(st.text_input("State Pension Age0 (Y)", "67"))
     expected_state_pension_K[0] = float(st.text_input("State Pension0 p.a (K)", "9.3"))
     final_salary_pension_K[0] = float(st.text_input("Other Pension0 p.a (K): ", "0"))
@@ -65,7 +65,7 @@ with col1.expander("Person 0 details", expanded=True):
 with col1.expander("Person 1 details", expanded=False):
     ages[1] = int(st.text_input("Age1 (Y):", 44))
     salary_K[1] = float(st.text_input("Annual Salary1 (K):", 15))
-    employee_pension_contribution_perc[1] = float(st.text_input("Employer Pension Contribution1 (%): ", 0.0))
+    employer_pension_contribution_perc[1] = float(st.text_input("Employer Pension Contribution1 (%): ", 0.0))
     pension_age = int(st.text_input("State Pension Age1 (Y)", "67"))
     expected_state_pension_K[1] = float(st.text_input("State Pension1 p.a (K)", "9.3"))
     final_salary_pension_K[1] = float(st.text_input("Other Pension1 p.a (K): ", "10.2")) # 8.4 + 1.8 (Council + RBS
@@ -79,7 +79,8 @@ with col2.expander("Investment assumptions"):
 
 for i in range(0, 2):
     with col2.expander("Person " + str(i) + " Pension Choices"):
-        person_pension_contribution_perc[i] = st.slider("Employee " + str(i) + " Pension Contribution (%): " , 0, 25, 13)
+        initial_pension_contribution = 13 if (i == 0) else int(0)
+        employee_pension_contribution_perc[i] = st.slider("Employee " + str(i) + " Pension Contribution (%): " , 0, 25, initial_pension_contribution)
         retirement_age[i] = st.slider("Retirement Age "  + str(i) + " (Y):" , 45, 67, 67)
         four_day_week_age[i] = st.slider("Four Day Week Age "  + str(i) + " (Y):", 45, 67, 67)
 
@@ -105,7 +106,7 @@ end_of_year_total_assets_K = current_assets_K;
 #
 for current_age in range(lowestStartingAge, highestRetirementAge): # For each year where someone is still working
     # Apply returns from investment before adding pension contributions
-    current_assets_K = current_assets_K * (1.0 + (rate_of_return_pa_perc / 100 ))
+    current_assets_K = current_assets_K * (1.0 + (rate_of_return_pa_perc / 100 ))        
 
     yearly_gross_income_K = 0
     yearly_net_income_K = 0
@@ -115,12 +116,12 @@ for current_age in range(lowestStartingAge, highestRetirementAge): # For each ye
 
             day_adjusted_salary_K = (salary_K[i] * 0.8) if (current_age >= four_day_week_age[i]) else salary_K[i]                        
 
-            pension_contribution_K = (day_adjusted_salary_K * (person_pension_contribution_perc[i] / 100))
+            pension_contribution_K = day_adjusted_salary_K * ((employer_pension_contribution_perc[i] + employee_pension_contribution_perc[i]) / 100)
             current_assets_K += pension_contribution_K
-
+            
             net_salary_K = calc_income_after_tax_and_NI(True, day_adjusted_salary_K - pension_contribution_K)             
             yearly_net_income_K += net_salary_K
-
+    
     age_and_assets_at_end_of_each_year_K.append((current_age, current_assets_K))
     age_and_gross_income_each_year_K.append((current_age, yearly_gross_income_K))
     age_and_net_income_each_year_K.append((current_age, yearly_net_income_K))
