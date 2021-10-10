@@ -75,7 +75,7 @@ with col2.expander("Investment assumptions"):
     inflation = st.slider("Inflation (%): ", 2.0, 3.5, 2.5, 0.1)
     fees = st.slider("Fees (%): ", 0.4, 1.0, 0.5, 0.1)
     rate_of_return_pa_perc = st.slider("Real Return, before retirement (%): ", 0.0, 5.5, 2.5, 0.1)
-    rate_of_return_after_retirement_pa_perc = st.slider("Real Return, after retirement (%): ", 0.0, 5.5, 1.5, 0.1)
+    rate_of_return_after_retirement_pa_perc = st.slider("Real Return, after retirement (%): ", 1.0, 5.5, 1.5, 0.1)
 
 for i in range(0, 2):
     with col2.expander("Person " + str(i) + " Pension Choices"):
@@ -106,7 +106,7 @@ end_of_year_total_assets_K = current_assets_K;
 #
 for current_age in range(lowestStartingAge, highestRetirementAge): # For each year where someone is still working
     # Apply returns from investment before adding pension contributions
-    current_assets_K = current_assets_K * (1.0 + (rate_of_return_pa_perc / 100 ))        
+    current_assets_K = current_assets_K * (1.0 + ((rate_of_return_pa_perc - fees) / 100 ))        
 
     yearly_gross_income_K = 0
     yearly_net_income_K = 0
@@ -166,11 +166,8 @@ while True:
     if (current_age < pension_age):
         current_assets_K = current_assets_K - state_pen_pa_K_total
 
-    # Pay fees
-    current_assets_K = current_assets_K * (1 - (fees / 100));
-
     # Calculate investment return on remaining assets.    
-    current_assets_K = current_assets_K * (1.0 + ((rate_of_return_after_retirement_pa_perc) / 100 ))
+    current_assets_K = current_assets_K * (1.0 + ((rate_of_return_after_retirement_pa_perc - fees) / 100 ))
         
     age_and_assets_at_end_of_each_year_K.append((current_age, current_assets_K))
     age_and_gross_income_each_year_K.append((current_age, yearly_gross_retirement_income_K))
