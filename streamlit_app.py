@@ -143,7 +143,7 @@ state_pen_pa_K_total = expected_state_pension_K[0] + expected_state_pension_K[1]
 # How many years of retirement are there with no state pension?
 years_without_state_pension = pension_age - highestRetirementAge
 
-current_age = highestRetirementAge
+current_age = highestRetirementAge + 1
 current_assets_K = final_assets_at_retirement_K
 
 yearly_gross_retirement_income_K = drawdown_pa_K + state_pen_pa_K_total
